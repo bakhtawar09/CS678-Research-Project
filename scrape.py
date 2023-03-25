@@ -222,14 +222,13 @@ class NonTrending(InstallDriver):
             print(f'video: {video}')
             self.driver.get(video)
             time.sleep(2)
-            duration = self.__get_video_duration()
-            self.videos[video] = duration  # for sorting later on
-            print(f'duration: {duration}')
-            self.videos[video] = duration  # for sorting later on
             try:
                 live = self.driver.execute_script(
                     "return document.getElementsByClassName(\"ytp-chrome-bottom\")[0].children[1].children[0].children[4].children[3].textContent")
-                print(f'live: {live}')
+                if live == 'Watch live stream':
+                    self.random_sample.remove(video)
+                duration = self.__get_video_duration()
+                self.videos[video] = duration  # for sorting later on
             except:
                 pass
 
