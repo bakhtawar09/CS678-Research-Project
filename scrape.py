@@ -54,6 +54,9 @@ class TrendingScraper(InstallDriver):
             self.driver.get(video)
             time.sleep(2)
             try:
+                self.driver.execute_script(
+                    "document.getElementsByClassName('video-stream html5-main-video')[0].volume=0"
+                )
                 duration = self.__get_video_duration()
                 print(f'Video: {video} | Duration: {duration}')
                 self.videos[video] = duration
@@ -208,6 +211,9 @@ class NonTrending(InstallDriver):
             self.driver.get(video)
             time.sleep(2)
             try:
+                self.driver.execute_script(
+                    "document.getElementsByClassName('video-stream html5-main-video')[0].volume=0"
+                )
                 live = self.driver.execute_script(
                     "return document.getElementsByClassName(\"ytp-chrome-bottom\")[0].children[1].children[0].children[4].children[3].textContent")
                 if live == 'Watch live stream':
