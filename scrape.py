@@ -227,8 +227,8 @@ class NonTrending(InstallDriver):
             print(f'duration: {duration}')
             self.videos[video] = duration  # for sorting later on
             try:
-                live = self.driver.find_element(
-                    by=By.XPATH, value="//*[@id=\"movie_player\"]/div[28]/div[2]/div[1]/div[1]/button/text()")
+                live = self.driver.execute_script(
+                    "return document.getElementsByClassName(\"ytp-chrome-bottom\")[0].children[1].children[0].children[4].children[3].textContent")
                 print(f'live: {live}')
             except:
                 pass
