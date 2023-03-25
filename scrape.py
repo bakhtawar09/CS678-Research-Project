@@ -13,6 +13,8 @@ import itertools
 import subprocess
 import argparse
 import sys
+import random
+import json
 
 
 class InstallPackages:
@@ -51,6 +53,7 @@ class TrendingScraper(InstallDriver):
         self.final_videos = []
         self.trending_videos = []
         self.videos = {}
+        self.videos_longer_than_hour = {}
 
     def __get_video_duration(self):
         return self.driver.execute_script(
@@ -71,6 +74,12 @@ class TrendingScraper(InstallDriver):
 
         self.videos = dict(
             sorted(self.videos.items(), key=lambda item: item[1]))
+        self.videos_longer_than_hour = {
+            k: v for k, v in self.videos.items() if v > 3600.0}
+
+        for video in self.videos_longer_than_hour:
+            del self.videos[video]
+
         self.trending_videos = list(self.videos.keys())
 
     def __len__(self):
@@ -107,6 +116,10 @@ class TrendingScraper(InstallDriver):
         with open('trending_videos.txt', 'w') as file:
             for video in self.trending_videos:
                 file.write('%s\n' % video)
+        with open('trending_videos_longer_than_hour.txt', 'w') as file:
+            videos = list(self.videos_longer_than_hour.keys())
+            for video in videos:
+                file.write('%s\n' % video)
 
     def __del__(self):
         self.driver.close()
@@ -131,6 +144,7 @@ class NonTrending(InstallDriver):
         self.list_videos = []
         self.homepage_videos = []
         self.videos = {}
+        self.videos_longer_than_hour = {}
 
     def __get_video_duration(self):
         return self.driver.execute_script(
@@ -155,10 +169,13 @@ class NonTrending(InstallDriver):
         self.homepage_videos = list(set(self.homepage_videos))
 
     def __write_to_file(self):
-        print('Writing to file...')
         with open('non_trending.txt', 'w') as f:
             for item in self.homepage_videos:
                 f.write("%s\n" % item)
+        with open('non_trending_longer_than_hour.txt', 'w') as f:
+            videos = list(self.videos_longer_than_hour.keys())
+            for video in videos:
+                f.write('%s\n' % video)
 
     def __len__(self):
         return len(self.homepage_videos)
@@ -195,12 +212,47 @@ class NonTrending(InstallDriver):
     def __sort_by_duration(self):
         self.videos = dict(
             sorted(self.videos.items(), key=lambda item: item[1]))
+        self.videos_longer_than_hour = {
+            k: v for k, v in self.videos.items() if v > 3600.0}
+
+        # remove videos longer than an hour from self.videos
+        for video in self.videos_longer_than_hour:
+            del self.videos[video]
+
         self.homepage_videos = list(self.videos.keys())
+
+    def __random_sample(self):
+        if not os.path.exists('trending_videos.txt'):
+            raise FileNotFoundError(
+                'trending_videos.txt not found. Scrape trending videos first')
+        if not os.path.exists('non_trending.txt'):
+            raise FileNotFoundError(
+                'non_trending.txt not found. Scrape non trending videos first')
+
+        if os.stat('trending_videos.txt').st_size == 0:
+            raise ValueError('trending_videos.txt is empty')
+        if os.stat('non_trending.txt').st_size == 0:
+            raise ValueError('non_trending.txt is empty')
+
+        with open('trending_videos.txt', 'r') as file:
+            trending = file.read().splitlines()
+        with open('non_trending.txt', 'r') as file:
+            non_trending = file.read().splitlines()
+        trending = list(filter(None, trending))
+        non_trending = list(filter(None, non_trending))
+        size_trending = len(trending)
+        random_sample = random.sample(non_trending, size_trending)
+        with open('non_trending_random.txt', 'w') as file:
+            for video in random_sample:
+                file.write("%s\n" % video)
 
     def __del__(self):
         self.driver.quit()
 
     def main(self):
+        if sys.argv[1] == '--random' or sys.argv[1] == '-r':
+            self.__random_sample()
+            return
         self.driver.get(self.URL)
         self.__scrape()
         self.__process()
@@ -231,12 +283,16 @@ if __name__ == '__main__':
             '-t', '--trending', help='Scrape trending videos', action='store_true')
         parser.add_argument(
             '-n', '--non-trending', help='Scrape non trending videos', action='store_true')
+        parser.add_argument(
+            '-r', '--random', help='Scrape random non trending videos', action='store_true')
         args = parser.parse_args()
         if args.install:
             Install().main()
         elif args.trending:
             TrendingScraper().main()
         elif args.non_trending:
+            NonTrending().main()
+        elif args.random:
             NonTrending().main()
         else:
             parser.print_help()
