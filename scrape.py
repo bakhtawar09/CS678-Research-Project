@@ -144,7 +144,7 @@ class NonTrending(InstallDriver):
         self.chrome_service = ChromeService(executable_path=self.chrome_ser)
         self.driver = webdriver.Chrome(
             service=self.chrome_service, options=self.chrome_options)
-        self.SCROLL_NUMBER: int = 10
+        self.SCROLL_NUMBER: int = 40
         self.URL = 'https://www.youtube.com/'
         self.list_videos = []
         self.homepage_videos = []
@@ -238,9 +238,6 @@ class NonTrending(InstallDriver):
         if not os.path.exists('trending_videos.txt'):
             raise FileNotFoundError(
                 'trending_videos.txt not found. Scrape trending videos first')
-        if not os.path.exists('non_trending.txt'):
-            raise FileNotFoundError(
-                'non_trending.txt not found. Scrape non trending videos first')
 
         if os.stat('trending_videos.txt').st_size == 0:
             raise ValueError('trending_videos.txt is empty')
