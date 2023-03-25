@@ -10,22 +10,10 @@ from selenium.webdriver.common.by import By
 import os
 import time
 import itertools
-import subprocess
 import argparse
 import sys
 import random
 import json
-
-
-class InstallPackages:
-    def install_packages(self, packages) -> list:
-        failed_packages = []
-        for package in packages:
-            try:
-                subprocess.check_call(['pip', 'install', package])
-            except subprocess.CalledProcessError:
-                failed_packages.append(package)
-        return failed_packages
 
 
 class InstallDriver:
@@ -244,7 +232,10 @@ class NonTrending(InstallDriver):
         if not os.path.exists('trending_videos.txt'):
             raise FileNotFoundError(
                 'trending_videos.txt not found. Scrape trending videos first')
-            
+        if not os.path.exists('non_trending.txt'):
+            raise FileNotFoundError(
+                'non_trending.txt not found. Scrape non trending videos first')
+
         if os.stat('trending_videos.txt').st_size == 0:
             raise ValueError('trending_videos.txt is empty')
 
@@ -269,29 +260,15 @@ class NonTrending(InstallDriver):
         self.__dump()
 
 
-class Install(InstallPackages):
-    def __init__(self):
-        super().__init__()
-
-    def main(self):
-        with open('packages.txt', 'r') as f:
-            packages = f.read().splitlines()
-        self.install_packages(packages)
-
-
 if __name__ == '__main__':
     try:
         parser = argparse.ArgumentParser()
-        parser.add_argument(
-            '-i', '--install', help='Install packages', action='store_true')
         parser.add_argument(
             '-t', '--trending', help='Scrape trending videos', action='store_true')
         parser.add_argument(
             '-n', '--non-trending', help='Scrape non trending videos', action='store_true')
         args = parser.parse_args()
-        if args.install:
-            Install().main()
-        elif args.trending:
+        if args.trending:
             TrendingScraper().main()
         elif args.non_trending:
             NonTrending().main()
