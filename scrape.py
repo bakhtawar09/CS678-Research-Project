@@ -205,9 +205,6 @@ class NonTrending(InstallDriver):
         return len(self.homepage_videos)
 
     def __remove_trending(self):
-        with open('non_trending.txt', 'r') as file:
-            lines = file.readlines()
-            self.homepage_videos = lines
         print('len of homepage videos before removing trending:',
               len(self.homepage_videos))
         with open('trending_videos.txt', 'r') as file:
