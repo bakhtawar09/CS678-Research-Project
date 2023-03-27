@@ -51,7 +51,6 @@ class TrendingScraper(InstallDriver):
         self.trending_videos_dict: Dict[str, float] = {}
         self.trending_videos_longer_than_hour: Dict[str, float] = {}
         self.trending_videos_shorter_than_hour: Dict[str, float] = {}
-        self.max_duration: float = 0.0
 
     def __get_video_duration(self) -> float:
         # Get the duration of the video in seconds
@@ -110,13 +109,6 @@ class TrendingScraper(InstallDriver):
         trending_shorter_shuffled = {
             key: self.trending_videos_shorter_than_hour[key] for key in trending_shorter_keys}
         self.trending_videos_shorter_than_hour = trending_shorter_shuffled
-
-    def get_max_duration(self) -> float:
-        max_duration: float = 0.0
-        for video in self.trending_videos_longer_than_hour:
-            if self.trending_videos_longer_than_hour[video] > max_duration:
-                max_duration = self.trending_videos_longer_than_hour[video]
-        return max_duration
 
     def __len__(self) -> int:
         return len(self.trending_videos_dict.keys())
@@ -215,6 +207,7 @@ class NonTrending(TrendingScraper):
         self.list_videos: list = []
         self.homepage_videos: list = []
         self.random_sample: list = []
+        self.max_duration_trending: float = 0.0
         self.nontrending_videos: Dict[str, float] = {}
         self.nontrending_videos_longer_than_hour: Dict[str, float] = {}
         self.nontrending_videos_shorter_than_hour: Dict[str, float] = {}
@@ -227,6 +220,17 @@ class NonTrending(TrendingScraper):
         )
 
         return duration
+
+    def __get_max_duration(self):
+        with open('trending_videos_longer_than_hour.json', 'r') as file:
+            trending_videos = json.load(file)
+
+        max_duration: float = 0.0
+        for _, duration in trending_videos.items():
+            if duration > max_duration:
+                max_duration = duration
+
+        self.max_duration_trending = max_duration
 
     def __scrape(self) -> None:
         time.sleep(5)
@@ -337,13 +341,16 @@ class NonTrending(TrendingScraper):
                 pass
 
     def __categorize_by_duration(self) -> None:
+
         self.nontrending_videos_longer_than_hour = {
             k: v for k, v in self.nontrending_videos.items() if v >= 3600.0}
         self.nontrending_videos_shorter_than_hour = {
             k: v for k, v in self.nontrending_videos.items() if v < 3600.0}
 
+        self.__get_max_duration()
+
         self.nontrending_videos_shorter_than_max_duration = dict(
-            filter(lambda elem: elem[1] <= self.max_duration, self.nontrending_videos_longer_than_hour.items()))
+            filter(lambda elem: elem[1] <= self.max_duration_trending, self.nontrending_videos_longer_than_hour.items()))
 
         nontrending_shorter_keys = list(
             self.nontrending_videos_shorter_than_hour.keys())
