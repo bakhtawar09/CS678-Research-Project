@@ -43,7 +43,7 @@ class TrendingScraper(InstallDriver):
         self.chrome_ser: str = InstallDriver().install()
         self.chrome_service: ChromeService = ChromeService(
             executable_path=self.chrome_ser)
-        self.driver: webdriver = webdriver.Chrome(
+        self.driver: webdriver.Chrome = webdriver.Chrome(
             service=self.chrome_service, options=self.chrome_options)
         self.SCROLL_NUMBER: int = 20
         self.final_videos: List[str] = []
@@ -97,10 +97,19 @@ class TrendingScraper(InstallDriver):
         self.trending_videos_shorter_than_hour = {
             k: v for k, v in self.trending_videos_dict.items() if v < 3600.0}
 
-        self.trending_videos_longer_than_hour = dict(
-            random.sample(self.trending_videos_longer_than_hour.items(), len(self.trending_videos_longer_than_hour)))
-        self.trending_videos_shorter_than_hour = dict(
-            random.sample(self.trending_videos_shorter_than_hour.items(), len(self.trending_videos_shorter_than_hour)))
+        trending_longer_keys = list(
+            self.trending_videos_longer_than_hour.keys())
+        random.shuffle(trending_longer_keys)
+        trending_longer_shuffled = {
+            key: self.trending_videos_longer_than_hour[key] for key in trending_longer_keys}
+        self.trending_videos_longer_than_hour = trending_longer_shuffled
+
+        trending_shorter_keys = list(
+            self.trending_videos_shorter_than_hour.keys())
+        random.shuffle(trending_shorter_keys)
+        trending_shorter_shuffled = {
+            key: self.trending_videos_shorter_than_hour[key] for key in trending_shorter_keys}
+        self.trending_videos_shorter_than_hour = trending_shorter_shuffled
 
     def get_max_duration(self) -> float:
         max_duration: float = 0.0
@@ -110,7 +119,7 @@ class TrendingScraper(InstallDriver):
         return max_duration
 
     def __len__(self) -> int:
-        return len(self.trending_videos)
+        return len(self.trending_videos_dict.keys())
 
     def __run(self) -> None:
         with open('trending_categories.txt', 'r') as file:
@@ -276,9 +285,9 @@ class NonTrending(TrendingScraper):
         try:
             with open('trending_videos.txt', 'r') as file:
                 lines = file.readlines()
-                for line in lines:
-                    if line in self.homepage_videos:
-                        self.homepage_videos.remove(line)
+            for line in lines:
+                if line in self.homepage_videos:
+                    self.homepage_videos.remove(line)
         except FileNotFoundError as e:
             print('Could not open the file: ', e)
         except Exception as e:
@@ -286,19 +295,29 @@ class NonTrending(TrendingScraper):
 
     def __remove_live(self):  # remove live videos from the sample
         for video in self.random_sample:
-            print(f'video: {video}')
             self.driver.get(video)
-            time.sleep(5)
+            time.sleep(3)
             try:
                 self.driver.execute_script(
                     "document.getElementsByClassName('video-stream html5-main-video')[0].volume=0"
                 )
-                live: str = self.driver.execute_script(
-                    "return document.getElementsByClassName(\"ytp-chrome-bottom\")[0].children[1].children[0].children[4].children[3].textContent")
+                live: str = ""
+                i = 0
+                while i < 5:
+                    try:
+                        live = self.driver.execute_script(
+                            "return document.getElementsByClassName(\"ytp-chrome-bottom\")[0].children[1].children[0].children[4].children[3].textContent")
+                        if live:
+                            break
+                    except:
+                        i += 1
                 print(f'live: {live}')
                 if live == 'Watch live stream':
                     print(f'Removing live video: {video}')
                     self.random_sample.remove(video)
+                    print(
+                        f'New sample size: {len(self.random_sample)}\n Continuing to next video!')
+                    continue
                 duration: float = 0.0
                 i = 0
                 while i < 5:
@@ -323,16 +342,22 @@ class NonTrending(TrendingScraper):
         self.nontrending_videos_shorter_than_hour = {
             k: v for k, v in self.nontrending_videos.items() if v < 3600.0}
 
-        # remove videos from the self.videos_longer_than_hour whose duration is more than self.max_duration using
-        # filter function
         self.nontrending_videos_shorter_than_max_duration = dict(
             filter(lambda elem: elem[1] <= self.max_duration, self.nontrending_videos_longer_than_hour.items()))
 
-        # shuffle the videos
-        self.nontrending_videos_shorter_than_hour = dict(
-            random.sample(self.nontrending_videos_shorter_than_hour.items(), len(self.nontrending_videos_shorter_than_hour)))
-        self.nontrending_videos_shorter_than_max_duration = dict(
-            random.sample(self.nontrending_videos_shorter_than_max_duration.items(), len(self.nontrending_videos_shorter_than_max_duration)))
+        nontrending_shorter_keys = list(
+            self.nontrending_videos_shorter_than_hour.keys())
+        random.shuffle(nontrending_shorter_keys)
+        nontrending_shorter_shuffled = {
+            key: self.nontrending_videos_shorter_than_hour[key] for key in nontrending_shorter_keys}
+        self.nontrending_videos_shorter_than_hour = nontrending_shorter_shuffled
+
+        nontrending_shorter_max_duration = list(
+            self.nontrending_videos_shorter_than_max_duration.keys())
+        random.shuffle(nontrending_shorter_max_duration)
+        nontrending_shorter_max_duration_shuffled = {
+            key: self.nontrending_videos_shorter_than_max_duration[key] for key in nontrending_shorter_max_duration}
+        self.nontrending_videos_shorter_than_max_duration = nontrending_shorter_max_duration_shuffled
 
     def __random_sample(self) -> None:
         if not os.path.exists('trending_videos.txt'):
@@ -348,6 +373,7 @@ class NonTrending(TrendingScraper):
         # Choose a random sample of trending videos.
         self.random_sample = random.sample(
             self.homepage_videos, len(trending_videos))
+        print(f'Length of random sample: {len(self.random_sample)}')
 
     def __prepare_dataset(self) -> None:
         self.__remove_trending()
@@ -361,15 +387,13 @@ class NonTrending(TrendingScraper):
         trending_total = len(self.trending_videos_shorter_than_hour.keys()) + \
             len(self.trending_videos_longer_than_hour.keys())
         if nontrending_total < trending_total:
-            # randomly select videos from self.nontrending_videos whose duration is less than self.max_duration
-            # and add them to the dataset
             nontrending_videos_shorter_than_max_duration = dict(
                 random.sample(self.nontrending_videos.items(), trending_total - nontrending_total))
-            # remve videos that are longer than self.max_duration
+            max_duration = self.get_max_duration()
             nontrending_videos_shorter_than_max_duration = {
-                k: v for k, v in nontrending_videos_shorter_than_max_duration.items() if v <= self.max_duration}
-            self.nontrending_videos_shorter_than_max_duration.update(
-                nontrending_videos_shorter_than_max_duration)
+                k: v for k, v in nontrending_videos_shorter_than_max_duration.items() if v <= max_duration}
+            self.nontrending_videos_shorter_than_max_duration = {
+                **self.nontrending_videos_shorter_than_max_duration, **nontrending_videos_shorter_than_max_duration}
 
         self.__write_to_file()
         self.__dump()
