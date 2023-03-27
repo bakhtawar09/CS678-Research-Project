@@ -71,7 +71,18 @@ class TrendingScraper(InstallDriver):
                     self.driver.execute_script(
                         "document.getElementsByClassName('video-stream html5-main-video')[0].volume=0"
                     )
-                    duration = self.__get_video_duration()
+                    duration: float = 0.0
+                    i = 0
+                    while i < 10:
+                        try:
+                            duration = self.__get_video_duration()
+                            if duration:
+                                break
+                        except:
+                            i += 1
+                    if not duration:
+                        print(f'Could not get duration for video: {video}')
+                        continue
                     print(f'Video: {video} | Duration: {duration}')
                     self.trending_videos_dict[video] = duration
                 except Exception as e:
@@ -91,8 +102,12 @@ class TrendingScraper(InstallDriver):
         self.trending_videos_shorter_than_hour = dict(
             random.sample(self.trending_videos_shorter_than_hour.items(), len(self.trending_videos_shorter_than_hour)))
 
-    def get_max_duration(self) -> None:
-        self.max_duration = max(self.trending_videos_longer_than_hour.values())
+    def get_max_duration(self) -> float:
+        max_duration: float = 0.0
+        for video in self.trending_videos_longer_than_hour:
+            if self.trending_videos_longer_than_hour[video] > max_duration:
+                max_duration = self.trending_videos_longer_than_hour[video]
+        return max_duration
 
     def __len__(self) -> int:
         return len(self.trending_videos)
@@ -202,18 +217,6 @@ class NonTrending(TrendingScraper):
             'return document.getElementById("movie_player").getDuration()'
         )
 
-        if duration is None:
-            self.logger.error("Failed to get video duration")
-            return 0.0
-
-        if not isinstance(duration, (int, float)):
-            self.logger.error("Video duration is not a number")
-            return 0.0
-
-        if duration <= 0:
-            self.logger.error("Video duration is not positive")
-            return 0.0
-
         return duration
 
     def __scrape(self) -> None:
@@ -229,11 +232,7 @@ class NonTrending(TrendingScraper):
             print('Scroll number: ', i)
 
     def __process(self) -> None:
-        # Remove duplicates
         self.homepage_videos = list(set(itertools.chain(*self.list_videos)))
-
-        # Remove videos which are not in the homepage
-        # because they could have been removed from the homepage
         self.homepage_videos = [
             video
             for video in self.homepage_videos
@@ -241,14 +240,10 @@ class NonTrending(TrendingScraper):
         ]
 
     def __write_to_file(self) -> None:
-        videos_longer_than_hour: List[str] = list(
-            self.trending_videos_longer_than_hour.keys())
         videos_shorter_than_hour: List[str] = list(
-            self.trending_videos_longer_than_hour.keys())
+            self.nontrending_videos_shorter_than_hour.keys())
         videos_shorter_than_max_duration: List[str] = list(
-            self.trending_videos_longer_than_hour.keys())
-        self.__write_to_file_helper(
-            videos_longer_than_hour, 'non_trending_longer_than_hour.txt')
+            self.nontrending_videos_shorter_than_max_duration.keys())
         self.__write_to_file_helper(
             videos_shorter_than_hour, 'non_trending_shorter_than_hour.txt')
         self.__write_to_file_helper(
@@ -264,10 +259,6 @@ class NonTrending(TrendingScraper):
 
     def __dump(self) -> None:
         try:
-            with open('nontrending_videos_longer_than_hour.json', 'w') as file:
-                json.dump(self.nontrending_videos_longer_than_hour,
-                          file, indent=4)
-
             with open('nontrending_videos_shorter_than_hour.json', 'w') as file:
                 json.dump(self.nontrending_videos_shorter_than_hour,
                           file, indent=4)
@@ -297,14 +288,16 @@ class NonTrending(TrendingScraper):
         for video in self.random_sample:
             print(f'video: {video}')
             self.driver.get(video)
-            time.sleep(2)
+            time.sleep(5)
             try:
                 self.driver.execute_script(
                     "document.getElementsByClassName('video-stream html5-main-video')[0].volume=0"
                 )
                 live: str = self.driver.execute_script(
                     "return document.getElementsByClassName(\"ytp-chrome-bottom\")[0].children[1].children[0].children[4].children[3].textContent")
+                print(f'live: {live}')
                 if live == 'Watch live stream':
+                    print(f'Removing live video: {video}')
                     self.random_sample.remove(video)
                 duration: float = 0.0
                 i = 0
@@ -330,14 +323,12 @@ class NonTrending(TrendingScraper):
         self.nontrending_videos_shorter_than_hour = {
             k: v for k, v in self.nontrending_videos.items() if v < 3600.0}
 
-        # remove videos from the self.videos_longer_than_hour whose duration is more than self.max_duration
-        max_duration = self.get_max_duration()
-        self.nontrending_videos_shorter_than_max_duration = {
-            k: v for k, v in self.nontrending_videos_longer_than_hour.items() if v <= max_duration}
+        # remove videos from the self.videos_longer_than_hour whose duration is more than self.max_duration using
+        # filter function
+        self.nontrending_videos_shorter_than_max_duration = dict(
+            filter(lambda elem: elem[1] <= self.max_duration, self.nontrending_videos_longer_than_hour.items()))
 
         # shuffle the videos
-        self.nontrending_videos_longer_than_hour = dict(
-            random.sample(self.nontrending_videos_longer_than_hour.items(), len(self.nontrending_videos_longer_than_hour)))
         self.nontrending_videos_shorter_than_hour = dict(
             random.sample(self.nontrending_videos_shorter_than_hour.items(), len(self.nontrending_videos_shorter_than_hour)))
         self.nontrending_videos_shorter_than_max_duration = dict(
