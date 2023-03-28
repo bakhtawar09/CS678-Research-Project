@@ -133,7 +133,10 @@ class TrendingScraper(InstallDriver):
     def __scrape(self, url: str) -> None:
         self.driver.get(url)
         time.sleep(2)
-        self.__accept_cookies()
+        try:
+            self.__accept_cookies()
+        except:
+            pass
         time.sleep(2)
         scroll_height = self.driver.execute_script(
             "return Math.ceil(document.getElementById(\"content\").scrollHeight)")
@@ -430,7 +433,10 @@ class NonTrending(TrendingScraper):
     def main(self) -> None:
         self.driver.get(self.URL)
         time.sleep(2)
-        self.__accept_cookies_homepage()
+        try:
+            self.__accept_cookies_homepage()
+        except:
+            pass
         time.sleep(2)
         self.__scrape()
         self.__process()
