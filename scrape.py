@@ -396,9 +396,9 @@ class NonTrending(TrendingScraper):
         if nontrending_total < trending_total:
             nontrending_videos_shorter_than_max_duration = dict(
                 random.sample(self.nontrending_videos.items(), trending_total - nontrending_total))
-            max_duration = self.get_max_duration()
+            self.__get_max_duration()
             nontrending_videos_shorter_than_max_duration = {
-                k: v for k, v in nontrending_videos_shorter_than_max_duration.items() if v <= max_duration}
+                k: v for k, v in nontrending_videos_shorter_than_max_duration.items() if v <= self.max_duration_trending}
             self.nontrending_videos_shorter_than_max_duration = {
                 **self.nontrending_videos_shorter_than_max_duration, **nontrending_videos_shorter_than_max_duration}
 
