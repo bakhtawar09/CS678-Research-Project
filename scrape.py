@@ -223,7 +223,7 @@ class NonTrending(TrendingScraper):
 
     def __get_max_duration(self):
         with open('trending_videos_longer_than_hour.json', 'r') as file:
-            trending_videos = json.load(file)
+            trending_videos: dict = json.load(file)
 
         max_duration: float = 0.0
         for _, duration in trending_videos.items():
