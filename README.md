@@ -47,3 +47,9 @@ To access the scraper for non trending vidoes, type the following in the termina
 ```bash
 python scraper.py -n
 ```
+
+## Instructions to run the data collection script
+
+```bash
+python script.py list_of_urls.txt
+```
