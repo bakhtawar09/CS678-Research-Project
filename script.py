@@ -125,6 +125,8 @@ def record_ad_buffer(driver, movie_id):
     ad_id = []
     ad_skippable = {}
     all_numbers = {}
+    both_skippable = []
+    skip_dur = []
     while ad_playing:
         ad_buffer = float(
             driver.execute_script(
@@ -234,10 +236,13 @@ def driver_code(driver, filename):
         folder_name = filename.split('.')
         new_dir = "./" + str(folder_name[0]) + "-" + str(index + 1)
 
+        driver.get(url)
+        time.sleep(2)
         try:
-            driver.get(url)
-            time.sleep(2)
-            accept_cookies(driver)
+            try:
+                accept_cookies(driver)
+            except:
+                pass
             # Enable Stats
             retry_count = 0
             while retry_count < 5:
@@ -313,10 +318,9 @@ def driver_code(driver, filename):
                     ad_id_list, skippable, ad_buf_details, skip_duration = record_ad_buffer(
                         driver, movie_id
                     )
-                    # print("returned")
 
                     for ad_id in range(len(ad_id_list)):
-                        if ad_id == "empty_video":
+                        if (str(ad_id_list[ad_id]).strip()) == "empty_video":
                             continue
                         if not (skippable[ad_id]):
                             skip_duration[ad_id] = 999
