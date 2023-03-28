@@ -45,7 +45,7 @@ class TrendingScraper(InstallDriver):
             executable_path=self.chrome_ser)
         self.driver: webdriver.Chrome = webdriver.Chrome(
             service=self.chrome_service, options=self.chrome_options)
-        self.SCROLL_NUMBER: int = 20
+        self.SCROLL_NUMBER: int = 0
         self.final_videos: List[str] = []
         self.trending_videos: List[str] = []
         self.trending_videos_dict: Dict[str, float] = {}
@@ -135,7 +135,11 @@ class TrendingScraper(InstallDriver):
         time.sleep(2)
         self.__accept_cookies()
         time.sleep(2)
+        scroll_height = self.driver.execute_script(
+            "return Math.ceil(document.getElementById(\"content\").scrollHeight)")
+        self.SCROLL_NUMBER = int(scroll_height / 780)
         for i in range(self.SCROLL_NUMBER):
+            print('Scroll number: ', i)
             html: WebElement = self.driver.find_element(
                 by=By.TAG_NAME, value='html')
             html.send_keys(Keys.PAGE_DOWN)
@@ -143,7 +147,6 @@ class TrendingScraper(InstallDriver):
                 by=By.XPATH, value="//a[@href[contains(., 'watch?v=') and not(contains(., '&list=')) and not(contains(., 'channel')) and not(contains(., 'user')) and not(contains(., 'playlist'))  and not(contains(., 'shorts'))]]")
             videos = [video.get_attribute('href') for video in videos]
             self.final_videos.append(videos)
-            print('Scroll number: ', i)
 
     def __process(self) -> None:
         self.trending_videos = list(itertools.chain(*self.final_videos))
