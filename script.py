@@ -9,6 +9,7 @@ from pathlib import Path
 from collections import Counter
 from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.chrome.service import Service as ChromeService
+from selenium.webdriver.common.by import By
 import os
 import sys
 
@@ -20,7 +21,7 @@ mobile_emulation = {
 # mobile_emulation = { "deviceName": "Nexus 6" }
 # Removing Throttling
 latencyInMilliseconds = 1
-downloadLimitMbps = 100
+downloadLimitMbps = 17.9
 uploadLimitMbps = 100
 
 TIME_TO_SLEEP = float(2 / downloadLimitMbps)
@@ -43,6 +44,14 @@ def to_seconds(timestr):
     for part in timestr.split(":"):
         seconds = seconds * 60 + int(part, 10)
     return seconds
+
+
+def accept_cookies(driver: webdriver.Chrome):
+    for _ in range(3):
+        driver.find_element(
+            by=By.XPATH, value="/html/body/div[2]/ytm-consent-bump-v2-renderer/div/div[3]/ytm-button-renderer/button").click()
+    driver.find_element(
+        by=By.XPATH, value="/html/body/div[2]/ytm-consent-bump-v2-renderer/div/div[2]/div[3]/ytm-button-renderer[1]/button").click()
 
 
 def enable_stats_for_nerds(driver):
@@ -170,9 +179,11 @@ def record_ad_buffer(driver, movie_id):
         ad_played_in_seconds = ad_played
         # Buffer, Seconds Played, Res
         if len(ad_id) == 1:
-                ad_buffer_list[ad_id[0]].append((ad_buffer, ad_played_in_seconds, res))
+            ad_buffer_list[ad_id[0]].append(
+                (ad_buffer, ad_played_in_seconds, res))
         if len(ad_id) == 2:
-            ad_buffer_list[ad_id[1]].append((ad_buffer, ad_played_in_seconds, res))
+            ad_buffer_list[ad_id[1]].append(
+                (ad_buffer, ad_played_in_seconds, res))
 
         ad_playing = driver.execute_script(
             "return document.getElementsByClassName('ad-showing').length"
@@ -182,26 +193,27 @@ def record_ad_buffer(driver, movie_id):
         ))
 
         if len(ad_id) == 1:
-                ad_skippable[ad_id[0]].append(skippable)
+            ad_skippable[ad_id[0]].append(skippable)
         if len(ad_id) == 2:
             ad_skippable[ad_id[1]].append(skippable)
 
         play_video_if_not_playing(driver)
 
     if len(ad_id) == 2:
-        both_skippable = [most_frequent( ad_skippable[ad_id[0]]),  most_frequent( ad_skippable[ad_id[1]]) ]
+        both_skippable = [most_frequent(
+            ad_skippable[ad_id[0]]),  most_frequent(ad_skippable[ad_id[1]])]
         skip_dur = [max(all_numbers[ad_id[0]]), max(all_numbers[ad_id[1]])]
-    
+
     if len(ad_id) == 1:
-        both_skippable = [most_frequent( ad_skippable[ad_id[0]])]
+        both_skippable = [most_frequent(ad_skippable[ad_id[0]])]
         skip_dur = [max(all_numbers[ad_id[0]])]
 
-    return ad_id, both_skippable , ad_buffer_list, skip_dur
+    return ad_id, both_skippable, ad_buffer_list, skip_dur
 
 
 def driver_code(driver, filename):
     with open(filename, "r") as f:
-        list_of_urls = f.readlines()
+        list_of_urls = f.read().splitlines()
 
     for index, url in enumerate(list_of_urls):
         global error_list
@@ -220,13 +232,13 @@ def driver_code(driver, filename):
         movie_id = url.split("=")[1]
         filename = str(filename)
         folder_name = filename.split('.')
-        new_dir = "./" + str(folder_name[0])
+        new_dir = "./" + str(folder_name[0]) + "-" + str(index + 1)
 
         try:
             driver.get(url)
-
-            # Enable Stats
             time.sleep(2)
+            accept_cookies(driver)
+            # Enable Stats
             retry_count = 0
             while retry_count < 5:
                 try:
@@ -244,11 +256,11 @@ def driver_code(driver, filename):
                 "return document.getElementsByClassName('ad-showing').length"
             )
             print("Playing Video: ", movie_id)
-            
+
             video_duration_in_seconds = driver.execute_script(
                 'return document.getElementById("movie_player").getDuration()'
             )
-            
+
             Path(new_dir).mkdir(parents=False, exist_ok=True)
 
             video_playing = driver.execute_script(
@@ -303,12 +315,12 @@ def driver_code(driver, filename):
                     )
                     # print("returned")
 
-                    for ad_id in range (len(ad_id_list)):
+                    for ad_id in range(len(ad_id_list)):
                         if ad_id == "empty_video":
                             continue
                         if not (skippable[ad_id]):
                             skip_duration[ad_id] = 999
-                        
+
                         print(
                             "Ad ID: ",
                             ad_id_list[ad_id],
@@ -322,7 +334,7 @@ def driver_code(driver, filename):
                             if ad_id_list[ad_id] != previous_ad_id:
                                 print("Ad id is: ", ad_id_list[ad_id])
                                 previous_ad_id = ad_id_list[ad_id]
-                            
+
                             if len(actual_buffer_reads) >= 1:
                                 buffer_size_with_ad.append(
                                     [
@@ -330,11 +342,12 @@ def driver_code(driver, filename):
                                         actual_buffer_reads[-1],
                                         video_played_in_seconds,
                                     ]
-                                )  
+                                )
                             else:
                                 buffer_size_with_ad.append(
-                                    [ad_id_list[ad_id], 0.0, video_played_in_seconds]
-                                )  
+                                    [ad_id_list[ad_id], 0.0,
+                                        video_played_in_seconds]
+                                )
                             if ad_id_list[ad_id] not in video_info_details.keys():
                                 unique_add_count += 1
                                 video_info_details[ad_id_list[ad_id]] = {
@@ -343,14 +356,17 @@ def driver_code(driver, filename):
                                     "SkipDuration": skip_duration[ad_id],
                                 }
                                 to_write = {
-                                        "buffer": ad_buf_details[ad_id_list[ad_id]],
-                                    }
-                                ad_buffer_information[ad_id_list[ad_id]] = to_write
-                                print("Advertisement " + str(unique_add_count) + " Data collected.")
+                                    "buffer": ad_buf_details[ad_id_list[ad_id]],
+                                }
+                                ad_buffer_information[ad_id_list[ad_id]
+                                                      ] = to_write
+                                print("Advertisement " +
+                                      str(unique_add_count) + " Data collected.")
 
                             else:
                                 current_value = video_info_details[ad_id_list[ad_id]]["Count"]
-                                video_info_details[ad_id_list[ad_id]]["Count"] = current_value + 1
+                                video_info_details[ad_id_list[ad_id]
+                                                   ]["Count"] = current_value + 1
 
                                 name = (
                                     ad_id_list[ad_id]
@@ -464,7 +480,7 @@ class Install:
     def install(self):
         return ChromeDriverManager(
             # modify this as per the device you're using
-            version='111.0.5563.64',  name='chromedriver',  os_type='mac_arm64', path=os.getcwd()
+            version='111.0.5563.64',  name='chromedriver',  os_type='linux64', path=os.getcwd()
         ).install()
 
 
