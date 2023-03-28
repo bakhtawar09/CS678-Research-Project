@@ -61,6 +61,13 @@ class TrendingScraper(InstallDriver):
         except WebDriverException:
             return 0
 
+    def __accept_cookies(self) -> float:
+        try:
+            self.driver.find_element(
+                by=By.XPATH, value='/html/body/c-wiz/div/div/div/div[2]/div[1]/div[3]/div[1]/form[2]/div/div/button').click()
+        except:
+            pass
+
     def __categorize_by_duration(self) -> float:
         for video in self.trending_videos:
             try:
@@ -125,6 +132,8 @@ class TrendingScraper(InstallDriver):
 
     def __scrape(self, url: str) -> None:
         self.driver.get(url)
+        time.sleep(2)
+        self.__accept_cookies()
         time.sleep(2)
         for i in range(self.SCROLL_NUMBER):
             html: WebElement = self.driver.find_element(
@@ -220,6 +229,13 @@ class NonTrending(TrendingScraper):
         )
 
         return duration
+
+    def __accept_cookies_homepage(self):
+        try:
+            self.driver.find_element(
+                by=By.XPATH, value="//*[@id=\"content\"]/div[2]/div[6]/div[1]/ytd-button-renderer[2]/yt-button-shape/button").click()
+        except Exception:
+            pass
 
     def __get_max_duration(self):
         with open('trending_videos_longer_than_hour.json', 'r') as file:
@@ -410,6 +426,9 @@ class NonTrending(TrendingScraper):
 
     def main(self) -> None:
         self.driver.get(self.URL)
+        time.sleep(2)
+        self.__accept_cookies_homepage()
+        time.sleep(2)
         self.__scrape()
         self.__process()
         self.__prepare_dataset()
