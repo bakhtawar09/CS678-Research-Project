@@ -45,7 +45,7 @@ class TrendingScraper(InstallDriver):
             executable_path=self.chrome_ser)
         self.driver: webdriver.Chrome = webdriver.Chrome(
             service=self.chrome_service, options=self.chrome_options)
-        self.SCROLL_NUMBER: int = 0
+        self.SCROLL_NUMBER: int = 20
         self.final_videos: List[str] = []
         self.trending_videos: List[str] = []
         self.trending_videos_dict: Dict[str, float] = {}
@@ -138,9 +138,6 @@ class TrendingScraper(InstallDriver):
         except:
             pass
         time.sleep(2)
-        scroll_height = self.driver.execute_script(
-            "return Math.ceil(document.getElementById(\"content\").scrollHeight)")
-        self.SCROLL_NUMBER = int(scroll_height / 780)
         for i in range(self.SCROLL_NUMBER):
             print('Scroll number: ', i)
             html: WebElement = self.driver.find_element(
@@ -400,8 +397,11 @@ class NonTrending(TrendingScraper):
             trending_videos = file.read().splitlines()
 
         # Choose a random sample of trending videos.
-        self.random_sample = random.sample(
-            self.homepage_videos, len(trending_videos))
+        if len(self.homepage_videos) < len(trending_videos):
+            self.random_sample = self.homepage_videos
+        else:
+            self.random_sample = random.sample(
+                self.homepage_videos, len(trending_videos))
         print(f'Length of random sample: {len(self.random_sample)}')
 
     def __prepare_dataset(self) -> None:
